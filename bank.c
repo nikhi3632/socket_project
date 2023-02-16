@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <fcntl.h>
+// #include <fcntl.h>
 #include "defs.h"
 
 void DieWithError(const char *errorMessage) // External error handling function
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 
     // create a socket
     socket_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
+    // fcntl(socket_fd, F_SETFL, O_NONBLOCK);
     if (socket_fd < 0) 
     {
         DieWithError("bank: socket() failed");
@@ -116,24 +116,25 @@ int main(int argc, char *argv[])
         customer_addr_len = sizeof(customer_addr);
         // Block until receive message from a customer
         recieve_msg_size = recvfrom(socket_fd, buffer, BUFFERMAX, 0, (struct sockaddr *)&customer_addr, &customer_addr_len);
-        if (recieve_msg_size > 0) 
-        {
-            buffer[recieve_msg_size] = '\0';
-            printf("bank: received string `%s` from customer on IP address %s\n", buffer, inet_ntoa(customer_addr.sin_addr));
-        } 
-        else if (recieve_msg_size == -1 && (errno == EWOULDBLOCK || errno == EAGAIN)) 
-        {
-            continue;
-        } else 
-        {
-            DieWithError("bank: recvfrom() failed");
-        }
-        // if(recieve_msg_size < 0 )
+        // if (recieve_msg_size > 0) 
+        // {
+        //     buffer[recieve_msg_size] = '\0';
+        //     printf("bank: received string `%s` from customer on IP address %s\n", buffer, inet_ntoa(customer_addr.sin_addr));
+        // } 
+        // else if (recieve_msg_size == -1 && (errno == EWOULDBLOCK || errno == EAGAIN)) 
+        // {
+        //     continue;
+        // } 
+        // else 
         // {
         //     DieWithError("bank: recvfrom() failed");
         // }
-        // buffer[recieve_msg_size] = '\0';
-        // printf("bank: received string `%s` from customer on IP address %s\n", buffer, inet_ntoa(customer_addr.sin_addr));
+        if(recieve_msg_size < 0 )
+        {
+            DieWithError("bank: recvfrom() failed");
+        }
+        buffer[recieve_msg_size] = '\0';
+        printf("bank: received string `%s` from customer on IP address %s\n", buffer, inet_ntoa(customer_addr.sin_addr));
 
         char **args = extract_words(buffer);
 

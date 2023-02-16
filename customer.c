@@ -14,7 +14,8 @@ void DieWithError(const char *errorMessage) // External error handling function
     exit(1);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
     int sockfd, bank_port;
     size_t nread;
     struct sockaddr_in server_addr;
@@ -28,7 +29,8 @@ int main(int argc, char *argv[]) {
     size_t buffer_string_len = BUFFERMAX;   // Length of string to echo
 
     // check that the correct number of arguments were passed
-    if (argc < 3) {
+    if (argc < 3) 
+    {
         fprintf(stderr, "Usage: %s <bank_IP> <UDP_bank_PORT> \n", argv[0]);
         exit(1);
     }
@@ -42,7 +44,8 @@ int main(int argc, char *argv[]) {
 
     // create a socket
     sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sockfd < 0) {
+    if (sockfd < 0) 
+    {
         DieWithError("customer: socket() failed");
     }
 
@@ -77,7 +80,9 @@ int main(int argc, char *argv[]) {
             printf("\ncustomer: reads string ``%s''\n", buffer_string);
         }
         else
+        {
             DieWithError("customer: error reading string to echo\n");
+        }
 
         // Send the string to the bank
         if(sendto(sockfd, buffer_string, strlen(buffer_string), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) != strlen(buffer_string))
@@ -91,9 +96,10 @@ int main(int argc, char *argv[]) {
 
         buffer_string[ respone_string_len ] = '\0';
 
-        if(server_addr.sin_addr.s_addr != fromAddr.sin_addr.s_addr )
+        if(server_addr.sin_addr.s_addr != fromAddr.sin_addr.s_addr)
+        {
             DieWithError("customer: Error: received a packet from unknown source.\n");
-
+        }
  		printf("customer: received string ``%s'' from bank on IP address %s\n", buffer_string, inet_ntoa(fromAddr.sin_addr));
     }
 
