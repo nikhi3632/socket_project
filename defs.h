@@ -68,12 +68,13 @@ bool can_add_new_customer(bank_t *bank, string ip, int portb, int portp)
         customer_t* customer = &bank->customers[i];
         if (strcmp(customer->customer_ip, ip) == 0)
         {   
-            bool bank_port_check = bank->bank_port == portb || bank->bank_port == portp;
-            bool ports_availability = customer->portb == portb || 
-                                      customer->portp == portp || 
-                                      customer->portb == portp || 
-                                      customer->portp == portb ;
-            if (bank_port_check || ports_availability) 
+            bool ports_assigned = bank->bank_port == portb || 
+                                  bank->bank_port == portp ||
+                                  customer->portb == portb || 
+                                  customer->portp == portp || 
+                                  customer->portb == portp || 
+                                  customer->portp == portb ;
+            if (ports_assigned) 
             {
                 return false;
             }
