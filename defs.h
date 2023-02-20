@@ -5,23 +5,25 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/fcntl.h>
 
-#define MAX_CUSTOMERS 1000
+#define MAX_CUSTOMERS 5
 #define MAX_NAME_LENGTH 15
 #define MAX_HOSTS 10
 #define MIN_PORT 9000
 #define MAX_PORT 9499
-#define BUFFERMAX 255
+#define BUFFERMAX 10000
 #define MAX_WORD_LENGTH 20
 #define MAX_COMMAND_WORDS 7
-#define ITERATIONS 5
-#define MAX_COHORT_SIZE 50
+#define ITERATIONS 1000
+#define MAX_COHORT_SIZE 2
 #define SUCCESS 0
 #define FAILURE -1
 #define OPEN "open"
 #define NEW_COHORT "new-cohort"
 #define DELETE_COHORT "delete-cohort"
 #define EXIT_BANK "exit"
+#define ACK "ACK"
 // Group 16 , Ports assigned => [9000, 9499]
 
 typedef char* string;
@@ -35,9 +37,15 @@ typedef struct Customer {
     int cohort_id; // defaults to -1.
 } customer_t;
 
+typedef struct NewCohortResponse {
+    int response_code;
+    customer_t cohort_customers[MAX_COHORT_SIZE];
+} new_cohort_response_t;
+
 typedef struct Cohort {
     int cohort_id;
     int size;
+    int is_deleted;
     customer_t customers[MAX_COHORT_SIZE];
 } cohort_t;
 
@@ -55,10 +63,25 @@ void DieWithError(const char *errorMessage) // External error handling function
     exit(1);
 }
 
-int countWords(char *str) {
+int set_nonblocking(int sockfd) {
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1) {
+        return -1;
+    }
+    flags |= O_NONBLOCK;
+    if (fcntl(sockfd, F_SETFL, flags) == -1) {
+        return -1;
+    }
+    return 0;
+}
+
+int countWords(char *str) 
+{
     int i, words = 1;
-    for (i = 0; i < strlen(str); i++) {
-        if (str[i] == ' ') {
+    for (i = 0; i < strlen(str); i++) 
+    {
+        if (str[i] == ' ') 
+        {
             words++;
         }
     }
@@ -67,12 +90,12 @@ int countWords(char *str) {
 
 char** extract_words(char* str)
 {
-    char **words = malloc(MAX_COMMAND_WORDS * sizeof(char *));
+    char **words = (char**)malloc(MAX_COMMAND_WORDS * sizeof(char *));
     char *token = strtok(str, " ");
     int i = 0;
     while (token != NULL && i < MAX_COMMAND_WORDS) 
     {
-        words[i] = malloc(MAX_WORD_LENGTH);
+        words[i] = (char*)malloc(MAX_WORD_LENGTH);
         strcpy(words[i], token);
         token = strtok(NULL, " ");
         i++;
@@ -135,29 +158,26 @@ int find_customer_index(bank_t *bank, string customer_name)
     return -1;
 }
 
-int* generate_distinct_numbers(int lower_bound, int upper_bound, int k) 
+customer_t* get_all_customers_in_cohort(bank_t *bank, string customer_name)
 {
-    if (k > upper_bound - lower_bound + 1) 
+    for (int i = 0; i < bank->num_cohorts; i++) 
     {
-        return NULL;
-    }
-    int* result = malloc(k * sizeof(int));
-    int i = 0;
-    while (i < k) 
-    {
-        int number = rand() % (upper_bound - lower_bound + 1) + lower_bound;
-        int j = 0;
-        while (j < i && number != result[j]) 
+        cohort_t *cohort_info = &bank->cohorts[i];
+        for(int j = 0; j < cohort_info->size; j++)
         {
-            j++;
-        }
-        if (j == i) 
-        {
-            result[i] = number;
-            i++;
+            if(strcmp(cohort_info->customers[j].name, customer_name) == 0)
+            {
+                int id = cohort_info->cohort_id;
+                if(id != -1)
+                {
+                    return cohort_info->customers;
+                }
+            }
         }
     }
-    return result;
+    
+    // Return NULL if no matching customer is found
+    return NULL;
 }
 
 void print_all_customers(bank_t* bank) 
@@ -186,12 +206,24 @@ void print_customers_in_cohort(bank_t* bank, int cohort_id)
     }
 }
 
-void print_customers_by_cohort(bank_t* bank) 
+void print_cohort(cohort_t cohort)
+{
+    printf("Cohort ID: %d | Cohort Size: %d\n", cohort.cohort_id, cohort.size);
+    printf("Customers: ");
+    for (int j = 0; j < cohort.size; j++) 
+    {
+        customer_t customer = cohort.customers[j];
+        {
+            printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) ", 
+                customer.name, customer.balance, customer.customer_ip, customer.portb, customer.portp);
+        }
+    }
+}
+
+void print_bank_cohorts(bank_t* bank)
 {
     printf("Customers by Cohort:\n");
-    for (int i = 0; i < bank->num_cohorts; i++) 
-    {
-        cohort_t* cohort = &bank->cohorts[i];
+        cohort_t* cohort = &bank->cohorts[bank->num_cohorts-1];
         printf("Cohort ID: %d | Cohort Size: %d\n", cohort->cohort_id, cohort->size);
         printf("Customers: ");
         for (int j = 0; j < bank->num_customers; j++) 
@@ -200,6 +232,64 @@ void print_customers_by_cohort(bank_t* bank)
             if (customer->cohort_id == cohort->cohort_id) 
             {
                 printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) ", 
+                    customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp);
+            }
+        }
+        printf("\n\n");
+}
+
+void print_new_cohort_response(new_cohort_response_t* new_cohort_response, int cohort_size)
+{
+    for (int i = 0; i < cohort_size; i++) 
+    {
+        printf("%d\n", cohort_size);
+        customer_t *cohort_customers = &new_cohort_response->cohort_customers[i];
+        printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) ", 
+                    cohort_customers->name, cohort_customers->balance, cohort_customers->customer_ip,
+                     cohort_customers->portb, cohort_customers->portp);
+    }
+}
+
+void serialize_new_cohort_response(new_cohort_response_t *response, char *buffer, int buffer_len) {
+    // Calculate the size of the serialized data
+    int total_size = sizeof(response->response_code) + (MAX_COHORT_SIZE * (sizeof(customer_t)));
+    if (buffer_len < total_size) {
+        printf("Error: buffer too small\n");
+        return;
+    }
+    
+    // Copy the response code
+    memcpy(buffer, &response->response_code, sizeof(response->response_code));
+    
+    // Copy the cohort customers
+    for (int i = 0; i < MAX_COHORT_SIZE; i++) {
+        memcpy(buffer + sizeof(response->response_code) + (i * sizeof(customer_t)), &response->cohort_customers[i], sizeof(customer_t));
+    }
+}
+
+void deserialize_new_cohort_response(new_cohort_response_t* response, const char* buffer, size_t buffer_len) {
+    // Copy the response code from the buffer into the response struct
+    memcpy(&response->response_code, buffer, sizeof(response->response_code));
+    
+    // Copy the customer data from the buffer into the response struct
+    memcpy(response->cohort_customers, buffer + sizeof(response->response_code), sizeof(customer_t) * MAX_COHORT_SIZE);
+}
+
+
+void print_customers_by_cohort(bank_t* bank) 
+{
+    printf("Customers by Cohort:\n");
+    for (int i = 0; i < bank->num_cohorts; i++) 
+    {
+        cohort_t cohort = bank->cohorts[i];
+        printf("Cohort ID: %d | Cohort Size: %d\n", cohort.cohort_id, cohort.size);
+        printf("Customers: ");
+        for (int j = 0; j < bank->num_customers; j++) 
+        {
+            customer_t* customer = &bank->customers[j];
+            if (customer->cohort_id == cohort.cohort_id) 
+            {
+                printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) \n", 
                     customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp);
             }
         }
