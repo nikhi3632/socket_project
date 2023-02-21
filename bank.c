@@ -52,7 +52,7 @@ int handle_open(bank_t* bank, string name, double balance, string ip_address, in
 new_cohort_response_t handle_new_cohort(bank_t* bank, string customer_name, int cohort_size) 
 {
     new_cohort_response_t resp;
-    memset(&resp, 0, sizeof(resp));  // Zero out structure
+    memset(&resp, 0, sizeof(new_cohort_response_t));  // Zero out structure
     // Check if the customer already exists in the bank
     resp.response_code = FAILURE;
     int customer_index = find_customer_index(bank, customer_name);
@@ -98,28 +98,25 @@ new_cohort_response_t handle_new_cohort(bank_t* bank, string customer_name, int 
         // Insufficient eligible customers
         return resp;
     }
-
     // Randomly select n-1 customers from the candidate list
     int selected_customers[cohort_size-1];
-    for (int i = 0; i < cohort_size-1; i++) 
+    for (int i = 0; i < cohort_size-1; i++)
     {
         int j = rand() % num_candidates;
         selected_customers[i] = candidate_customers[j];
         candidate_customers[j] = candidate_customers[num_candidates-1];
         num_candidates--;
     }
-    cohort_t cohort;
+    cohort_t cohort = {0};
     // Add the current customer to the selected customers to form the cohort
     bank->num_cohorts++;
     cohort.cohort_id = bank->num_cohorts;
+    printf("Cohort ID: %d\n", cohort.cohort_id);
     cohort.is_deleted = false;
     cohort.size = cohort_size;
+
+    bank->customers[customer_index].cohort_id = cohort.cohort_id;
     cohort.customers[0] = bank->customers[customer_index];
-    int j = 0;
-    for (int i = 1; i < cohort_size; i++) 
-    {
-        cohort.customers[i] = bank->customers[selected_customers[j++]];
-    }
     // Update the cohort IDs of the selected customers
     for (int i = 0; i < cohort_size-1; i++) 
     {
@@ -127,7 +124,12 @@ new_cohort_response_t handle_new_cohort(bank_t* bank, string customer_name, int 
     }
 
     // Update the cohort ID of the current customer
-    bank->customers[customer_index].cohort_id = cohort.cohort_id;
+   
+    int j = 0;
+    for (int i = 1; i < cohort_size; i++) 
+    {
+        cohort.customers[i] = bank->customers[selected_customers[j++]];
+    }
 
     // Get the new cohort
     bank->cohorts[bank->num_cohorts-1] = cohort;
@@ -137,7 +139,8 @@ new_cohort_response_t handle_new_cohort(bank_t* bank, string customer_name, int 
     {
         resp.cohort_customers[i] = cohort.customers[i];
     }
-    print_customers_by_cohort(bank);
+    // print_customers_by_cohort(bank);
+    print_new_cohort_response(&resp, cohort_size);
     return resp;
 }
 
@@ -186,8 +189,8 @@ int handle_exit(bank_t* bank, string customer_name)
 int main(int argc, char *argv[]) 
 {
     int socket_fd, bank_port;
-    char buffer[BUFFERMAX + 1];
-    char buffer_copy[BUFFERMAX + 1];
+    char buffer[BUFFERMAX];
+    char buffer_copy[BUFFERMAX];
     struct sockaddr_in bank_addr, customer_addr;
     socklen_t customer_addr_len;
     int recieve_msg_size;                 // Size of received message
@@ -269,16 +272,16 @@ int main(int argc, char *argv[])
             string customer_name = args[1];
             int cohort_size = atoi(args[2]);
             new_cohort_response_ = handle_new_cohort(&bank_server, customer_name, cohort_size);
-            char buffer_[sizeof(new_cohort_response_)];
-            memcpy(buffer_, &new_cohort_response_, sizeof(new_cohort_response_));
+            int buffer_len = MAX_COHORT_SIZE * sizeof(customer_t) + sizeof(int);
+            char* buffer_ = (char*) malloc(buffer_len);
+            print_new_cohort_response(&new_cohort_response_, cohort_size);
+            serialize_new_cohort_response(&new_cohort_response_, buffer_);
             // Send the buffer
-            int n = sendto(socket_fd, buffer_, sizeof(buffer_), 0, (struct sockaddr *)&customer_addr, sizeof(customer_addr));
+            int n = sendto(socket_fd, buffer_, buffer_len, 0, (struct sockaddr *)&customer_addr, sizeof(customer_addr));
             if(n == -1)
             {
                 DieWithError("bank: sendto() sent a different number of bytes than expected to customer on new-cohort");
             }
-            print_new_cohort_response(&new_cohort_response_, cohort_size);
-            print_customers_by_cohort(&bank_server);
         }
         else if(buffer_words == 2 && strcmp(args[0], DELETE_COHORT) == 0)
         {
@@ -300,8 +303,8 @@ int main(int argc, char *argv[])
                     struct sockaddr_in current_customer_fromAddr;
                     memset(&current_customer_addr, 0, sizeof(current_customer_addr)); // Zero out structure
                     current_customer_addr.sin_family = AF_INET;
-                    current_customer_addr.sin_addr.s_addr = inet_addr(cohort_customers[i].customer_ip);
-                    current_customer_addr.sin_port = htons(cohort_customers[i].portp);
+                    current_customer_addr.sin_addr.s_addr = inet_addr(current_customer.customer_ip);
+                    current_customer_addr.sin_port = htons(current_customer.portp);
                     current_buffer_string = DELETE_COHORT;
                     if(sendto(socket_fd, current_buffer_string, strlen(current_buffer_string), 0, (struct sockaddr *)&current_customer_addr, sizeof(current_customer_addr)) != strlen(current_buffer_string))
                     {
@@ -340,7 +343,6 @@ int main(int argc, char *argv[])
         }
 
         // Send received datagram back to the customer
-        free(args);
         send_msg_size = sendto(socket_fd, buffer, strlen(buffer), 0, (struct sockaddr *)&customer_addr, sizeof(customer_addr));
         if(send_msg_size != strlen(buffer))
         {

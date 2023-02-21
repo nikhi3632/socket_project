@@ -33,7 +33,7 @@ void *receive_and_respond_to_peers(void *arg)
 
         if(!is_cohort_formed)
         {
-            memcpy(&new_cohort_response, peer_buffer_string, sizeof(new_cohort_response));
+            memcpy(&new_cohort_response, peer_buffer_string, sizeof(new_cohort_response_t));
             is_cohort_formed = true;
             peer_buffer_string = ACK;
             if(sendto(sock_peer, peer_buffer_string, strlen(peer_buffer_string), 0, (struct sockaddr *)&peer_fromAddr, sizeof(peer_fromAddr)) != strlen(peer_buffer_string))
@@ -56,14 +56,14 @@ void *receive_and_respond_to_bank(void *arg)
     int bank_response_string_len;
     while(1)
     {
-        // pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
+        pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
         bank_response_string_len = recvfrom(sock, bank_buffer_string, BUFFERMAX, 0, (struct sockaddr*)&bank_fromAddr, &bank_fromSize);//mutex lock
         if(bank_response_string_len > BUFFERMAX)
         {
             printf("customer: recvfrom() failed\n");
         }
         bank_buffer_string[bank_response_string_len] = '\0';
-        // pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
+        pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
         printf("bank_buffer_string %s", bank_buffer_string);
         if(strcmp(bank_buffer_string, DELETE_COHORT) == 0)
         {
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     size_t nread;
     struct sockaddr_in bank_addr;
     struct sockaddr_in customer_addr, self_peer_addr;
-    char buffer[BUFFERMAX + 1];
+    char buffer[BUFFERMAX];
     char *bank_IP;
     struct sockaddr_in fromAddr;            // Source address of echo
     unsigned int fromSize;                  // In-out of address size for recvfrom()
@@ -190,31 +190,19 @@ int main(int argc, char *argv[])
 
         // Receive a response
         fromSize = sizeof(fromAddr);
-        // pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
+        pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
         response_string_len = recvfrom(sockfd, buffer_string, BUFFERMAX, 0, (struct sockaddr *) &fromAddr, &fromSize);
-        // pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
+        pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
         if(response_string_len > BUFFERMAX) //mutex lock
         {
             DieWithError("customer: recvfrom() failed");
         }
-
-        buffer_string_new[response_string_len] = '\0';
         if(strcmp(operation, NEW_COHORT) == 0)
         {
             char* customer_name = args[1];
             int cohort_size = atoi(args[2]);
-            // printf("buffer_size: %lu", sizeof(new_cohort_response));
-            // for (int i = 0; i < sizeof(new_cohort_response); i++)
-            // {
-            //     printf("%02X ", (unsigned char)buffer_string_new[i]);
-            // }
-            
-            //memcpy(&new_cohort_response, buffer_string_new, sizeof(new_cohort_response));
-            deserialize_new_cohort_response(&new_cohort_response, buffer_string_new, sizeof(new_cohort_response));
-      
-            // deserialize_new_cohort_response(&new_cohort_response, buffer_string_new, response_string_len);
+            deserialize_new_cohort_response(&new_cohort_response, buffer_string);
             print_new_cohort_response(&new_cohort_response, cohort_size);
-            printf("%d\n", new_cohort_response.response_code);
             if(new_cohort_response.response_code == FAILURE)
             {
                 printf("New cohort operation failed for customer %s\n", customer_name);
@@ -258,12 +246,13 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        // buffer_string[response_string_len] = '\0';
+        buffer_string[response_string_len] = '\0';
         if(bank_addr.sin_addr.s_addr != fromAddr.sin_addr.s_addr)
         {
             DieWithError("customer: Error: received a packet from unknown source.\n");
         }
- 		printf("customer: received string ``%s'' from bank on IP address %s\n", buffer_string, inet_ntoa(fromAddr.sin_addr));
+        printf("buffer_string %s\n", buffer_string);
+ 		printf("customer: received string '%s' from bank on IP address %s\n", buffer_string, inet_ntoa(fromAddr.sin_addr));
         pthread_create(&thread_id2, NULL, receive_and_respond_to_bank, (void*)&sockfd);
     }
     pthread_mutex_destroy(&mutex); // Destroy the mutex object

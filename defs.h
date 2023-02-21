@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/fcntl.h>
 
-#define MAX_CUSTOMERS 5
+#define MAX_CUSTOMERS 10
 #define MAX_NAME_LENGTH 15
 #define MAX_HOSTS 10
 #define MIN_PORT 9000
@@ -16,7 +16,7 @@
 #define MAX_WORD_LENGTH 20
 #define MAX_COMMAND_WORDS 7
 #define ITERATIONS 1000
-#define MAX_COHORT_SIZE 2
+#define MAX_COHORT_SIZE 4
 #define SUCCESS 0
 #define FAILURE -1
 #define OPEN "open"
@@ -235,46 +235,88 @@ void print_bank_cohorts(bank_t* bank)
                     customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp);
             }
         }
-        printf("\n\n");
 }
 
 void print_new_cohort_response(new_cohort_response_t* new_cohort_response, int cohort_size)
 {
     for (int i = 0; i < cohort_size; i++) 
     {
-        printf("%d\n", cohort_size);
         customer_t *cohort_customers = &new_cohort_response->cohort_customers[i];
-        printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) ", 
-                    cohort_customers->name, cohort_customers->balance, cohort_customers->customer_ip,
-                     cohort_customers->portb, cohort_customers->portp);
+        printf("New cohort Customer %d\n%s(Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d Cohort_id: %d)\n ", 
+                    i, cohort_customers->name, cohort_customers->balance, cohort_customers->customer_ip,
+                     cohort_customers->portb, cohort_customers->portp, cohort_customers->cohort_id);
     }
 }
 
-void serialize_new_cohort_response(new_cohort_response_t *response, char *buffer, int buffer_len) {
-    // Calculate the size of the serialized data
-    int total_size = sizeof(response->response_code) + (MAX_COHORT_SIZE * (sizeof(customer_t)));
-    if (buffer_len < total_size) {
-        printf("Error: buffer too small\n");
-        return;
-    }
-    
-    // Copy the response code
-    memcpy(buffer, &response->response_code, sizeof(response->response_code));
-    
-    // Copy the cohort customers
+// Serialization function
+void serialize_new_cohort_response(const new_cohort_response_t *response, char *buffer) {
+    int offset = 0;
+    memcpy(buffer + offset, &(response->response_code), sizeof(int));
+    offset += sizeof(int);
     for (int i = 0; i < MAX_COHORT_SIZE; i++) {
-        memcpy(buffer + sizeof(response->response_code) + (i * sizeof(customer_t)), &response->cohort_customers[i], sizeof(customer_t));
+        customer_t customer = response->cohort_customers[i];
+        memcpy(buffer + offset, &(customer.balance), sizeof(double));
+        offset += sizeof(double);
+        memcpy(buffer + offset, &(customer.portb), sizeof(int));
+        offset += sizeof(int);
+        memcpy(buffer + offset, &(customer.portp), sizeof(int));
+        offset += sizeof(int);
+        memcpy(buffer + offset, &(customer.cohort_id), sizeof(int));
+        offset += sizeof(int);
+        int name_length = customer.name ? strlen(customer.name) + 1 : 0;
+        memcpy(buffer + offset, &(name_length), sizeof(int));
+        offset += sizeof(int);
+        if (name_length > 0) {
+            memcpy(buffer + offset, customer.name, name_length);
+            offset += name_length;
+        }
+        int ip_length = customer.customer_ip ? strlen(customer.customer_ip) + 1 : 0;
+        memcpy(buffer + offset, &(ip_length), sizeof(int));
+        offset += sizeof(int);
+        if (ip_length > 0) {
+            memcpy(buffer + offset, customer.customer_ip, ip_length);
+            offset += ip_length;
+        }
     }
 }
 
-void deserialize_new_cohort_response(new_cohort_response_t* response, const char* buffer, size_t buffer_len) {
-    // Copy the response code from the buffer into the response struct
-    memcpy(&response->response_code, buffer, sizeof(response->response_code));
-    
-    // Copy the customer data from the buffer into the response struct
-    memcpy(response->cohort_customers, buffer + sizeof(response->response_code), sizeof(customer_t) * MAX_COHORT_SIZE);
+// Deserialization function
+void deserialize_new_cohort_response(new_cohort_response_t *response, const char *buffer) {
+    int offset = 0;
+    memcpy(&(response->response_code), buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    for (int i = 0; i < MAX_COHORT_SIZE; i++) {
+        customer_t customer;
+        memcpy(&(customer.balance), buffer + offset, sizeof(double));
+        offset += sizeof(double);
+        memcpy(&(customer.portb), buffer + offset, sizeof(int));
+        offset += sizeof(int);
+        memcpy(&(customer.portp), buffer + offset, sizeof(int));
+        offset += sizeof(int);
+        memcpy(&(customer.cohort_id), buffer + offset, sizeof(int));
+        offset += sizeof(int);
+        int name_length, ip_length;
+        memcpy(&(name_length), buffer + offset, sizeof(int));
+        offset += sizeof(int);
+        if (name_length > 0) {
+            customer.name = malloc(name_length);
+            memcpy(customer.name, buffer + offset, name_length);
+            offset += name_length;
+        } else {
+            customer.name = NULL;
+        }
+        memcpy(&(ip_length), buffer + offset, sizeof(int));
+        offset += sizeof(int);
+        if (ip_length > 0) {
+            customer.customer_ip = malloc(ip_length);
+            memcpy(customer.customer_ip, buffer + offset, ip_length);
+            offset += ip_length;
+        } else {
+            customer.customer_ip = NULL;
+        }
+        response->cohort_customers[i] = customer;
+    }
 }
-
 
 void print_customers_by_cohort(bank_t* bank) 
 {
@@ -293,7 +335,7 @@ void print_customers_by_cohort(bank_t* bank)
                     customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp);
             }
         }
-        printf("\n\n");
+        // printf("\n\n");
     }
 }
 
