@@ -156,10 +156,10 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    pthread_mutex_init(&mutex, NULL); // Initialize the mutex object
-    pthread_t thread_id1, thread_id2;
-    pthread_create(&thread_id1, NULL, receive_and_respond_to_peers, (void*)&sockfd_peer);
-    pthread_create(&thread_id2, NULL, receive_and_respond_to_bank, (void*)&sockfd);
+    // pthread_mutex_init(&mutex, NULL); // Initialize the mutex object
+    // pthread_t thread_id1, thread_id2;
+    // pthread_create(&thread_id1, NULL, receive_and_respond_to_peers, (void*)&sockfd_peer);
+    // pthread_create(&thread_id2, NULL, receive_and_respond_to_bank, (void*)&sockfd);
 
     // connect to the bank
     printf("customer: Echoing strings for %d iterations\n", ITERATIONS);
@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
         printf("\nEnter string to echo: \n");
         if((nread = getline(&buffer_string, &buffer_string_len, stdin)) != -1)
         {
-            pthread_cancel(thread_id2);
+            // pthread_cancel(thread_id2);
             buffer_string[(int)strlen(buffer_string) - 1 ] = '\0'; // Overwrite newline
             printf("\ncustomer: reads string ``%s''\n", buffer_string);
         }
@@ -190,9 +190,9 @@ int main(int argc, char *argv[])
 
         // Receive a response
         fromSize = sizeof(fromAddr);
-        pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
+        // pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
         response_string_len = recvfrom(sockfd, buffer_string, BUFFERMAX, 0, (struct sockaddr *) &fromAddr, &fromSize);
-        pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
+        // pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
         if(response_string_len > BUFFERMAX) //mutex lock
         {
             DieWithError("customer: recvfrom() failed");
@@ -253,9 +253,9 @@ int main(int argc, char *argv[])
         }
         printf("buffer_string %s\n", buffer_string);
  		printf("customer: received string '%s' from bank on IP address %s\n", buffer_string, inet_ntoa(fromAddr.sin_addr));
-        pthread_create(&thread_id2, NULL, receive_and_respond_to_bank, (void*)&sockfd);
+        // pthread_create(&thread_id2, NULL, receive_and_respond_to_bank, (void*)&sockfd);
     }
-    pthread_mutex_destroy(&mutex); // Destroy the mutex object
+    // pthread_mutex_destroy(&mutex); // Destroy the mutex object
     // close the sockets
     close(sockfd_peer);
     close(sockfd);
