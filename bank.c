@@ -243,7 +243,6 @@ int main(int argc, char *argv[])
 
         // Block until receive message from a customer
         recieve_msg_size = recvfrom(socket_fd, buffer, BUFFERMAX, 0, (struct sockaddr *)&customer_addr, &customer_addr_len);
-
         if(recieve_msg_size < 0 )
         {
             DieWithError("bank: recvfrom() failed");
@@ -274,7 +273,6 @@ int main(int argc, char *argv[])
             new_cohort_response_ = handle_new_cohort(&bank_server, customer_name, cohort_size);
             int buffer_len = MAX_COHORT_SIZE * sizeof(customer_t) + sizeof(int);
             char* buffer_ = (char*) malloc(buffer_len);
-            print_new_cohort_response(&new_cohort_response_, cohort_size);
             serialize_new_cohort_response(&new_cohort_response_, buffer_);
             // Send the buffer
             int n = sendto(socket_fd, buffer_, buffer_len, 0, (struct sockaddr *)&customer_addr, sizeof(customer_addr));

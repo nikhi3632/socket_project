@@ -57,6 +57,16 @@ typedef struct Bank {
     int bank_port;
 } bank_t;
 
+typedef struct State {
+   double balance;
+   bool ok_checkpoint;
+   bool will_rollback;
+   bool resume_execution;
+   int last_received;
+   int last_sent;
+   int first_sent;  
+} state_t;
+
 void DieWithError(const char *errorMessage) // External error handling function
 {
     perror(errorMessage);
@@ -242,8 +252,8 @@ void print_new_cohort_response(new_cohort_response_t* new_cohort_response, int c
     for (int i = 0; i < cohort_size; i++) 
     {
         customer_t *cohort_customers = &new_cohort_response->cohort_customers[i];
-        printf("New cohort Customer %d\n%s(Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d Cohort_id: %d)\n ", 
-                    i, cohort_customers->name, cohort_customers->balance, cohort_customers->customer_ip,
+        printf("New_Cohort_Customer:%d\n%s(Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d Cohort_id: %d)\n ", 
+                    i+1, cohort_customers->name, cohort_customers->balance, cohort_customers->customer_ip,
                      cohort_customers->portb, cohort_customers->portp, cohort_customers->cohort_id);
     }
 }
