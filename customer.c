@@ -14,7 +14,8 @@ state_t local_state;
 state_t secured_state;
 int cohort_size = 0;
 string peer_name;
-new_cohort_response_t new_cohort_response; 
+new_cohort_response_t new_cohort_response;
+bool is_cohort_formed = false;
 
 void init_props()
 {
@@ -68,7 +69,6 @@ void *receive_and_respond_to_peers(void *arg)
     struct sockaddr_in peer_fromAddr;
     unsigned int peer_fromSize = sizeof(peer_fromAddr);
     int peer_response_string_len;
-    bool is_cohort_formed = false;
     while(1)
     {
         char *peer_buffer_string = NULL;
@@ -312,18 +312,18 @@ void handle_transfer(int amount, string customer_name, int sockfd_peer)
             }
         }
         char msg[BUFFERMAX];
-        snprintf(msg, BUFFERMAX, "%s %d %s %d", TRANSFER, local_state.balance, customer_name, local_state.props[index].first_sent);
+        snprintf(msg, BUFFERMAX, "%s %d %s %d", TRANSFER, amount, customer_name, local_state.props[index].first_sent);
         struct sockaddr_in peer_addr;
         memset(&peer_addr, 0, sizeof(peer_addr)); // Zero out structure
         peer_addr.sin_family = AF_INET;
         peer_addr.sin_addr.s_addr = inet_addr(peer_ip);
         peer_addr.sin_port = htons(peer_port);
-        printf("Transfer-Message: %s\n", msg);
+        // printf("Transfer-Message: %s\n", msg);
         if(sendto(sockfd_peer, msg, strlen(msg), 0, (struct sockaddr *)&peer_addr, sizeof(peer_addr)) != strlen(msg))
         {
             printf("transfer-peer customer: sendto() sent a different number of bytes than expected\n");
         }
-        printf("Transfer-Message-next: %s\n", msg);
+        // printf("Transfer-Message-next: %s\n", msg);
     }
 }
 
@@ -526,6 +526,7 @@ int main(int argc, char *argv[])
         buffer_string[response_string_len] = '\0';
         if(strcmp(operation, OPEN) == 0)
         {
+            peer_name = args[1];
             int customer_balance = atoi(args[2]);
             local_state.balance = customer_balance;
             local_state.ok_checkpoint = true;
@@ -535,7 +536,6 @@ int main(int argc, char *argv[])
         else if(strcmp(operation, NEW_COHORT) == 0)
         {
             pthread_cancel(thread_id1);
-            peer_name = args[1];
             cohort_size = atoi(args[2]);
             deserialize_new_cohort_response(&new_cohort_response, buffer_string);
             init_props();
@@ -584,6 +584,7 @@ int main(int argc, char *argv[])
                         }
                     }
                 }
+                is_cohort_formed = true;
                 pthread_create(&thread_id1, NULL, receive_and_respond_to_peers, (void*)&sockfd_peer);
             }
         }
@@ -599,7 +600,7 @@ int main(int argc, char *argv[])
             string customer_name = args[2];
             printf("Current balance for customer %s is %d\n", peer_name, local_state.balance);
             handle_transfer(amount, customer_name, sockfd_peer);
-            printf("Updated balance for customer after transfer %s is %d\n", peer_name, local_state.balance);
+            printf("Updated balance for customer %s after transfer is %d\n", peer_name, local_state.balance);
             pthread_create(&thread_id1, NULL, receive_and_respond_to_peers, (void*)&sockfd_peer);
         }
         else if(strcmp(operation, LOST_TRANSFER) == 0)
