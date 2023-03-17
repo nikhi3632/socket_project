@@ -203,26 +203,27 @@ int main(int argc, char *argv[])
             char* customer_name = args[1];
             int cohort_size = atoi(args[2]);
             deserialize_new_cohort_response(&new_cohort_response, buffer_string);
-            print_new_cohort_response(&new_cohort_response, MAX_COHORT_SIZE);
+            // print_new_cohort_response(&new_cohort_response, MAX_COHORT_SIZE);
             if(new_cohort_response.response_code == FAILURE)
             {
                 printf("New cohort operation failed for customer %s\n", customer_name);
             }
             else
             {
-                int cohort_buffer_len = MAX_COHORT_SIZE * sizeof(customer_t) + sizeof(int);
-                char* cohort_buffer_string = (char*) malloc(cohort_buffer_len);
                 for(int i = 0; i < cohort_size; i++)
                 {
                     if(strcmp(new_cohort_response.cohort_customers[i].name, customer_name))
                     {   
-                        serialize_new_cohort_response(&new_cohort_response, cohort_buffer_string);
+                        int cohort_buffer_len = MAX_COHORT_SIZE * sizeof(customer_t) + sizeof(int);
+                        char* cohort_buffer_string = (char*) malloc(cohort_buffer_len);
+                        print_new_cohort_response(&new_cohort_response, MAX_COHORT_SIZE);
+                        serialize_new_cohort_response(&new_cohort_response, cohort_buffer_string); //issue???
                         struct sockaddr_in cohort_customer_addr;
                         memset(&cohort_customer_addr, 0, sizeof(cohort_customer_addr)); // Zero out structure
                         cohort_customer_addr.sin_family = AF_INET;
                         cohort_customer_addr.sin_addr.s_addr = inet_addr(new_cohort_response.cohort_customers[i].customer_ip);
                         cohort_customer_addr.sin_port = htons(new_cohort_response.cohort_customers[i].portp);
-                        if(sendto(sockfd_peer, cohort_buffer_string, strlen(cohort_buffer_string), 0, (struct sockaddr *)&cohort_customer_addr, sizeof(cohort_customer_addr)) != strlen(cohort_buffer_string))
+                        if(sendto(sockfd_peer, cohort_buffer_string, cohort_buffer_len, 0, (struct sockaddr *)&cohort_customer_addr, sizeof(cohort_customer_addr)) != cohort_buffer_len)
                         {
                             printf("cohort customer: sendto() sent a different number of bytes than expected\n");
                         }
