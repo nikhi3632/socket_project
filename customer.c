@@ -9,12 +9,12 @@
 #include <pthread.h>
 #include "defs.h"
 
-state_t local_state; //global variable
-state_t secured_state; //global variable
-int cohort_size = 0; // global variable
-string peer_name; //global variable
-new_cohort_response_t new_cohort_response; //global variable
-pthread_mutex_t mutex; // Declare a mutex object
+/* Global variables */
+state_t local_state;
+state_t secured_state;
+int cohort_size = 0;
+string peer_name;
+new_cohort_response_t new_cohort_response; 
 
 void init_props()
 {
@@ -259,9 +259,7 @@ void *receive_and_respond_to_bank(void *arg)
     int bank_response_string_len;
     while(1)
     {
-        // pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
-        bank_response_string_len = recvfrom(sock, bank_buffer_string, BUFFERMAX, 0, (struct sockaddr*)&bank_fromAddr, &bank_fromSize);//mutex lock
-        // pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
+        bank_response_string_len = recvfrom(sock, bank_buffer_string, BUFFERMAX, 0, (struct sockaddr*)&bank_fromAddr, &bank_fromSize);
         if(bank_response_string_len > BUFFERMAX)
         {
             printf("customer: recvfrom() failed\n");
@@ -490,7 +488,6 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    // pthread_mutex_init(&mutex, NULL); // Initialize the mutex object
     pthread_t thread_id1, thread_id2;
     pthread_create(&thread_id1, NULL, receive_and_respond_to_peers, (void*)&sockfd_peer);
     pthread_create(&thread_id2, NULL, receive_and_respond_to_bank, (void*)&sockfd);
@@ -521,10 +518,8 @@ int main(int argc, char *argv[])
        		DieWithError("customer: sendto() sent a different number of bytes than expected");
         }
         // Receive a response
-        // pthread_mutex_lock(&mutex); // Lock the mutex before accessing shared resource
         response_string_len = recvfrom(sockfd, buffer_string, BUFFERMAX, 0, (struct sockaddr *) &fromAddr, &fromSize);
-        // pthread_mutex_unlock(&mutex); // Unlock the mutex after accessing shared resource
-        if(response_string_len > BUFFERMAX) //mutex lock
+        if(response_string_len > BUFFERMAX)
         {
             DieWithError("customer: recvfrom() failed");
         }
@@ -625,7 +620,6 @@ int main(int argc, char *argv[])
         }
         pthread_create(&thread_id2, NULL, receive_and_respond_to_bank, (void*)&sockfd);
     }
-    // pthread_mutex_destroy(&mutex); // Destroy the mutex object
     // close the sockets
     close(sockfd_peer);
     close(sockfd);
