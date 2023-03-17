@@ -154,11 +154,11 @@ int handle_delete_cohort(bank_t *bank, string customer_name)
             if(strcmp(cohort_info->customers[j].name, customer_name) == 0)
             {
                 cohort_info->is_deleted = true;
+                print_customers_by_cohort(bank);
                 return SUCCESS;
             }
         }
     }
-    print_customers_by_cohort(bank);
     return FAILURE;
 }
 
@@ -197,10 +197,8 @@ int main(int argc, char *argv[])
     int send_msg_size;                    // Size of sent message
 
     bank_t bank_server;
-    // cohort_t cohort_;
     new_cohort_response_t new_cohort_response_;
     memset(&bank_server, 0, sizeof(bank_server));                           // Zero out structure
-    // memset(&cohort_, 0, sizeof(cohort_));                                   // Zero out structure
     memset(&new_cohort_response_, 0, sizeof(new_cohort_response_));          // Zero out structure
 
     // check that the correct number of arguments were passed
@@ -243,6 +241,7 @@ int main(int argc, char *argv[])
 
         // Block until receive message from a customer
         recieve_msg_size = recvfrom(socket_fd, buffer, BUFFERMAX, 0, (struct sockaddr *)&customer_addr, &customer_addr_len);
+
         if(recieve_msg_size < 0 )
         {
             DieWithError("bank: recvfrom() failed");
@@ -283,45 +282,57 @@ int main(int argc, char *argv[])
         }
         else if(buffer_words == 2 && strcmp(args[0], DELETE_COHORT) == 0)
         {
+            printf("Deleting_cohort\n");
             string customer_name = args[1];
             customer_t *cohort_customers = get_all_customers_in_cohort(&bank_server, customer_name);
             if (cohort_customers != NULL) 
             {
-                int num_customers = MAX_COHORT_SIZE;
+                int num_customers = get_cohort_size(&new_cohort_response_);
                 for (int i = 0; i < num_customers; i++) 
                 {
                     customer_t current_customer = cohort_customers[i];
-                    /* Do something with current_customer */
-                    char *current_buffer_string = NULL;
-                    size_t current_buffer_string_len = BUFFERMAX;
-                    current_buffer_string = (char *)malloc(BUFFERMAX);
-                    struct sockaddr_in current_customer_addr;
-                    unsigned int current_fromSize;
-                    int current_response_string_len;
-                    struct sockaddr_in current_customer_fromAddr;
-                    memset(&current_customer_addr, 0, sizeof(current_customer_addr)); // Zero out structure
-                    current_customer_addr.sin_family = AF_INET;
-                    current_customer_addr.sin_addr.s_addr = inet_addr(current_customer.customer_ip);
-                    current_customer_addr.sin_port = htons(current_customer.portp);
-                    current_buffer_string = DELETE_COHORT;
-                    if(sendto(socket_fd, current_buffer_string, strlen(current_buffer_string), 0, (struct sockaddr *)&current_customer_addr, sizeof(current_customer_addr)) != strlen(current_buffer_string))
+                    if(strcmp(customer_name, current_customer.name))
                     {
-                        printf("current customer: sendto() sent a different number of bytes than expected\n");
-                    }
-                    if((current_response_string_len = recvfrom(socket_fd, current_buffer_string, BUFFERMAX, 0, (struct sockaddr*)&current_customer_fromAddr, &current_fromSize)) > BUFFERMAX)
-                    {
-                        printf("customer: recvfrom() failed\n");
-                    }
-                    if(current_customer_addr.sin_addr.s_addr != current_customer_fromAddr.sin_addr.s_addr)
-                    {
-                        printf("current customer: Error: received a packet from unknown source.\n");
-                    }
-                    if(!strcmp(current_buffer_string, ACK)) // recieved ACK
-                    {
-                        printf("current customer: ACK: failed, cannot perform delete cohort operation.\n");
+                        char *current_buffer_string = (char *)malloc(BUFFERMAX);
+                        struct sockaddr_in current_customer_addr;
+                        memset(&current_customer_addr, 0, sizeof(current_customer_addr)); // Zero out structure
+                        current_customer_addr.sin_family = AF_INET;
+                        current_customer_addr.sin_addr.s_addr = inet_addr(current_customer.customer_ip);
+                        current_customer_addr.sin_port = htons(current_customer.portb);
+                        current_buffer_string = DELETE_COHORT;
+                        if(sendto(socket_fd, current_buffer_string, strlen(current_buffer_string), 0, (struct sockaddr *)&current_customer_addr, sizeof(current_customer_addr)) != strlen(current_buffer_string))
+                        {
+                            printf("current customer: sendto() sent a different number of bytes than expected\n");
+                        }
+                        /*waiting for ACK from other customers*/
+                        struct sockaddr_in current_customer_fromAddr;
+                        unsigned int current_fromSize = sizeof(current_customer_fromAddr);
+                        char *buffer_peer_string_cohort = (char *)malloc(BUFFERMAX);
+                        int current_peer_response_string_len;
+                        if((current_peer_response_string_len = recvfrom(socket_fd, buffer_peer_string_cohort, BUFFERMAX, 0, (struct sockaddr*)&current_customer_fromAddr, &current_fromSize)) > BUFFERMAX)
+                        {
+                            printf("current customer: recvfrom() failed\n");
+                        }
+                        buffer_peer_string_cohort[current_peer_response_string_len] = '\0';
+                        if(current_customer_addr.sin_addr.s_addr != current_customer_fromAddr.sin_addr.s_addr)
+                        {
+                            printf("current customer: Error: received a packet from unknown source.\n");
+                        }
+                        if(strcmp(buffer_peer_string_cohort, ACK)) // recieved ACK
+                        {
+                            printf("current customer: ACK: failed, cannot perform delete cohort operation.\n");
+                        }
                     }
                 }
-                handle_delete_cohort(&bank_server, customer_name);
+                int delete_status = handle_delete_cohort(&bank_server, customer_name);
+                if(delete_status == SUCCESS)
+                {
+                    printf("Customer %s deleted from cohort successfully\n", customer_name);
+                }
+                else
+                {
+                    printf("Delete cohort failed for customer %s\n", customer_name);
+                }
             }
             else 
             {

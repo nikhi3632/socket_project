@@ -23,14 +23,29 @@
 #define NEW_COHORT "new-cohort"
 #define DELETE_COHORT "delete-cohort"
 #define EXIT_BANK "exit"
+#define DEPOSIT "deposit"
+#define WITHDRAW "withdraw"
+#define TRANSFER "transfer"
+#define LOST_TRANSFER "lost-transfer"
+#define CHECKPOINT "checkpoint"
+#define ROLLBACK "rollback"
+#define TAKE_TENT_CKPT "take-tent-ckpt"
+#define MAKE_TENT_CKPT_PERM "make-tent-ckpt-perm"
+#define PREPARE_ROLLBACK "prepare-rollback"
+#define YES "YES"
+#define NO "NO"
 #define ACK "ACK"
-// Group 16 , Ports assigned => [9000, 9499]
+
+/* Group 16 , Ports assigned => [9000, 9499]
+Note that we are not implementing any "replay" operations, 
+therefore on recovery we simply resume from a consistent global state 
+and that all operations after the checkpoint are "lost". */
 
 typedef char* string;
 
 typedef struct Customer {
     string name;
-    double balance;
+    int balance;
     string customer_ip;
     int portb; // is the port number customer uses for communication with the bank.
     int portp; // is the port number used for communication with other bank customers.
@@ -57,14 +72,19 @@ typedef struct Bank {
     int bank_port;
 } bank_t;
 
+typedef struct Properties {
+    string customer_name;
+    int last_received;
+    int last_sent;
+    int first_sent;
+} properties_t;
+
 typedef struct State {
-   double balance;
+   int balance;
    bool ok_checkpoint;
    bool will_rollback;
    bool resume_execution;
-   int last_received;
-   int last_sent;
-   int first_sent;  
+   properties_t props[MAX_COHORT_SIZE];
 } state_t;
 
 void DieWithError(const char *errorMessage) // External error handling function
@@ -168,6 +188,17 @@ int find_customer_index(bank_t *bank, string customer_name)
     return -1;
 }
 
+void print_state(state_t* state)
+{
+    printf("Balance: %d| ok_checkpoint: %d | will_rollback :%d | resume_execution :%d\n", 
+        state->balance, state->ok_checkpoint, state->will_rollback, state->resume_execution);
+    for(int i = 0; i < MAX_COHORT_SIZE; i++)
+    {
+        printf("Props %d| Customer_name: %s | first_sent: %d | last_received : %d | last_sent: %d\n" , i, 
+            state->props[i].customer_name, state->props[i].first_sent, state->props[i].last_received, state->props[i].last_sent);
+    }
+}
+
 customer_t* get_all_customers_in_cohort(bank_t *bank, string customer_name)
 {
     for (int i = 0; i < bank->num_cohorts; i++) 
@@ -190,13 +221,24 @@ customer_t* get_all_customers_in_cohort(bank_t *bank, string customer_name)
     return NULL;
 }
 
+customer_t* get_customer_by_name(new_cohort_response_t new_cohort_response, string customer_name) {
+    for (int i = 0; i < MAX_COHORT_SIZE; i++) {
+        if (strcmp(new_cohort_response.cohort_customers[i].name, customer_name) == 0) {
+            customer_t* customer = malloc(sizeof(customer_t));
+            *customer = new_cohort_response.cohort_customers[i];
+            return customer;
+        }
+    }
+    return NULL; // customer with the given name not found
+}
+
 void print_all_customers(bank_t* bank) 
 {
     printf("All Customers:\n");
     for (int i = 0; i < bank->num_customers; i++) 
     {
         customer_t* customer = &bank->customers[i];
-        printf("Name: %s | Balance: %.2f | IP Address: %s | Port_b: %d | Port_p: %d | Cohort ID: %d\n", 
+        printf("Name: %s | Balance: %d | IP Address: %s | Port_b: %d | Port_p: %d | Cohort ID: %d\n", 
                 customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp, 
                 customer->cohort_id);
     }
@@ -210,7 +252,7 @@ void print_customers_in_cohort(bank_t* bank, int cohort_id)
         customer_t* customer = &bank->customers[i];
         if (customer->cohort_id == cohort_id) 
         {
-            printf("Name: %s | Balance: %.2f | IP Address: %s | Port_b: %d | Port_p: %d\n", 
+            printf("Name: %s | Balance: %d | IP Address: %s | Port_b: %d | Port_p: %d\n", 
                     customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp);
         }
     }
@@ -224,7 +266,7 @@ void print_cohort(cohort_t cohort)
     {
         customer_t customer = cohort.customers[j];
         {
-            printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) ", 
+            printf("%s (Balance: %d, IP Address: %s, Port_b: %d, Port_p: %d) ", 
                 customer.name, customer.balance, customer.customer_ip, customer.portb, customer.portp);
         }
     }
@@ -241,7 +283,7 @@ void print_bank_cohorts(bank_t* bank)
             customer_t* customer = &bank->customers[j];
             if (customer->cohort_id == cohort->cohort_id) 
             {
-                printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) ", 
+                printf("%s (Balance: %d, IP Address: %s, Port_b: %d, Port_p: %d) ", 
                     customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp);
             }
         }
@@ -252,10 +294,24 @@ void print_new_cohort_response(new_cohort_response_t* new_cohort_response, int c
     for (int i = 0; i < cohort_size; i++) 
     {
         customer_t *cohort_customers = &new_cohort_response->cohort_customers[i];
-        printf("New_Cohort_Customer:%d\n%s(Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d Cohort_id: %d)\n ", 
+        printf("New cohort Customer %d\n%s(Balance: %d, IP Address: %s, Port_b: %d, Port_p: %d Cohort_id: %d)\n ", 
                     i+1, cohort_customers->name, cohort_customers->balance, cohort_customers->customer_ip,
                      cohort_customers->portb, cohort_customers->portp, cohort_customers->cohort_id);
     }
+}
+
+int get_cohort_size(new_cohort_response_t* new_cohort_response)
+{
+    int sz = 0;
+    for (int i = 0; i < MAX_COHORT_SIZE; i++) 
+    {
+        customer_t *cohort_customers = &new_cohort_response->cohort_customers[i];
+        if(cohort_customers->name)
+        {
+            sz++;
+        }
+    }
+    return sz;
 }
 
 // Serialization function
@@ -334,18 +390,17 @@ void print_customers_by_cohort(bank_t* bank)
     for (int i = 0; i < bank->num_cohorts; i++) 
     {
         cohort_t cohort = bank->cohorts[i];
-        printf("Cohort ID: %d | Cohort Size: %d\n", cohort.cohort_id, cohort.size);
+        printf("Cohort ID: %d | Cohort Size: %d | Cohort is_deleted: %d\n", cohort.cohort_id, cohort.size, cohort.is_deleted);
         printf("Customers: ");
         for (int j = 0; j < bank->num_customers; j++) 
         {
             customer_t* customer = &bank->customers[j];
             if (customer->cohort_id == cohort.cohort_id) 
             {
-                printf("%s (Balance: %.2f, IP Address: %s, Port_b: %d, Port_p: %d) \n", 
+                printf("%s (Balance: %d, IP Address: %s, Port_b: %d, Port_p: %d) \n", 
                     customer->name, customer->balance, customer->customer_ip, customer->portb, customer->portp);
             }
         }
-        // printf("\n\n");
     }
 }
 
