@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
             DieWithError("bank: recvfrom() failed");
         }
         buffer[recieve_msg_size] = '\0';
-        printf("bank: received string `%s` from customer on IP address %s\n", buffer, inet_ntoa(customer_addr.sin_addr));
+        // printf("bank: received string `%s` from customer on IP address %s\n", buffer, inet_ntoa(customer_addr.sin_addr));
 
         strcpy(buffer_copy, buffer);
         char **args = extract_words(buffer_copy);
@@ -327,11 +327,11 @@ int main(int argc, char *argv[])
                 int delete_status = handle_delete_cohort(&bank_server, customer_name);
                 if(delete_status == SUCCESS)
                 {
-                    printf("Customer %s deleted from cohort successfully\n", customer_name);
+                    printf("Cohort Deleted Successfully\n");
                 }
                 else
                 {
-                    printf("Delete cohort failed for customer %s\n", customer_name);
+                    printf("Cohort Deletion Failed\n");
                 }
             }
             else 
@@ -346,10 +346,10 @@ int main(int argc, char *argv[])
             string customer_name = args[1];
             handle_exit(&bank_server, customer_name);
         }
-        else
-        {
-            printf("Try again with a vaild command!\n");
-        }
+        // else
+        // {
+        //     printf("Try again with a vaild command!\n");
+        // }
 
         // Send received datagram back to the customer
         send_msg_size = sendto(socket_fd, buffer, strlen(buffer), 0, (struct sockaddr *)&customer_addr, sizeof(customer_addr));

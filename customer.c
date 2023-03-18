@@ -98,28 +98,29 @@ void *receive_and_respond_to_peers(void *arg)
         {
             int amount = atoi(args[1]);
             string transfer_customer = args[2];
+            int fs_label = atoi(args[3]);
             char msg[BUFFERMAX];
-            for(int i = 0; i < MAX_COHORT_SIZE; i++)
+            for(int i = 0; i < cohort_size; i++)
             {
-                // printf("Names %s, %s\n", transfer_customer, local_state.props[i].customer_name);
                 if(local_state.props[i].customer_name && (strcmp(transfer_customer, local_state.props[i].customer_name) == 0))
                 {
                     if(!(local_state.props[i].first_sent == 0 && local_state.props[i].last_received == 0) 
-                        && (local_state.props[i].first_sent - local_state.props[i].last_received != 1)) //identify disparity
+                        && (fs_label - local_state.props[i].last_received != 1)) //identify disparity
                     {
                         local_state.ok_checkpoint = false;
-                        for(int i = 0; i < MAX_COHORT_SIZE; i++)
+                        for(int i = 0; i < cohort_size; i++)
                         {
                             if(local_state.props[i].customer_name && strcmp(local_state.props[i].customer_name, peer_name))
                             {
                                 customer_t* send_customer = get_customer_by_name(new_cohort_response, local_state.props[i].customer_name);
                                 snprintf(msg, BUFFERMAX, "%s %s %d", PREPARE_ROLLBACK, peer_name, local_state.props[i].last_sent);
+                                printf("Rollback message: %s\n", msg);
                                 struct sockaddr_in send_addr;
                                 memset(&send_addr, 0, sizeof(send_addr)); // Zero out structure
                                 send_addr.sin_family = AF_INET;
                                 send_addr.sin_addr.s_addr = inet_addr(send_customer->customer_ip);
                                 send_addr.sin_port = htons(send_customer->portp);
-                                msg[(int)strlen(msg) - 1] = '\0';
+                                msg[(int)strlen(msg)] = '\0';
                                 if(sendto(sock_peer, msg, strlen(msg), 0, (struct sockaddr *)&send_addr, sizeof(send_addr)) != strlen(msg))
                                 {
                                     printf("rollback-customer: sendto() sent a different number of bytes than expected\n");
@@ -149,8 +150,10 @@ void *receive_and_respond_to_peers(void *arg)
                         }
                         if(local_state.will_rollback)
                         {
+                            printf("---Local State Before roll back---");
+                            print_state(&local_state);
                             copy_secure2local();
-                            for(int i = 0; i < MAX_COHORT_SIZE; i++)
+                            for(int i = 0; i < cohort_size; i++)
                             {
                                 if(local_state.props[i].customer_name && (strcmp(local_state.props[i].customer_name, peer_name)))
                                 {
@@ -161,13 +164,16 @@ void *receive_and_respond_to_peers(void *arg)
                                     send_addr.sin_family = AF_INET;
                                     send_addr.sin_addr.s_addr = inet_addr(send_customer->customer_ip);
                                     send_addr.sin_port = htons(send_customer->portp);
-                                    msg[(int)strlen(msg) - 1] = '\0';
+                                    msg[(int)strlen(msg)] = '\0';
                                     if(sendto(sock_peer, msg, strlen(msg), 0, (struct sockaddr *)&send_addr, sizeof(send_addr)) != strlen(msg))
                                     {
                                         printf("rollback-customer: sendto() sent a different number of bytes than expected\n");
                                     }
                                 }
                             }
+                            printf("---Local State after roll back---");
+                            print_state(&local_state);
+                            printf("Roll-back complete\n");
                         }
                     }
                     else
@@ -240,6 +246,7 @@ void *receive_and_respond_to_peers(void *arg)
                     if(!(local_state.will_rollback && (ls_label > local_state.props[i].last_sent && local_state.resume_execution))) //verify condition.
                     {
                         snprintf(peer_buffer_string, BUFFERMAX, "%s %s", peer_name, YES);
+                        printf("Send Rollback ACK: %s\n", peer_buffer_string);
                         if(sendto(sock_peer, peer_buffer_string, strlen(peer_buffer_string), 0, (struct sockaddr *)&peer_fromAddr, sizeof(peer_fromAddr)) != strlen(peer_buffer_string))
                         {
                             printf("peer customer: sendto() sent a different number of bytes than expected\n");
@@ -259,7 +266,12 @@ void *receive_and_respond_to_peers(void *arg)
         }
         else if(strcmp(operation, ROLLBACK) == 0)
         {
+            printf("---Local State Before roll back---");
+            print_state(&local_state);
             copy_secure2local();
+            printf("---Local State after roll back---");
+            print_state(&local_state);
+            printf("Roll-back complete\n");
         }
     }
     // return NULL;
@@ -309,7 +321,7 @@ void handle_update(int amount, string operation)
 
 void handle_transfer(int amount, string customer_name, int sockfd_peer)
 {
-    customer_t* peer_customer = get_customer_by_name(new_cohort_response, customer_name);
+    customer_t* peer_customer = get_customer_by_name(new_cohort_response, customer_name); //Julio
     if (peer_customer != NULL) 
     {
         string peer_ip = peer_customer->customer_ip;
@@ -328,6 +340,7 @@ void handle_transfer(int amount, string customer_name, int sockfd_peer)
         }
         char msg[BUFFERMAX];
         snprintf(msg, BUFFERMAX, "%s %d %s %d", TRANSFER, amount, customer_name, local_state.props[index].first_sent);
+        printf("Transfer message: %s\n", msg);
         struct sockaddr_in peer_addr;
         memset(&peer_addr, 0, sizeof(peer_addr)); // Zero out structure
         peer_addr.sin_family = AF_INET;
@@ -347,9 +360,7 @@ void handle_lost_transfer(int amount, string customer_name)
     {
         string peer_ip = peer_customer->customer_ip;
         int peer_port = peer_customer->portp;
-        printf("Current balance for customer %s is %d\n", peer_name, local_state.balance);
         local_state.balance -= amount;
-        printf("Updated balance for customer after lost-transfer %s is %d\n", peer_name, local_state.balance);
         for(int i = 0; i < cohort_size; i++)
         {
             if(strcmp(local_state.props[i].customer_name, peer_name) == 0)
@@ -618,8 +629,10 @@ int main(int argc, char *argv[])
             int amount = atoi(args[1]);
             string customer_name = args[2];
             printf("Current balance for customer %s is %d\n", peer_name, local_state.balance);
-            handle_transfer(amount, customer_name, sockfd_peer);
+            handle_transfer(amount, customer_name, sockfd_peer); // Julio
             printf("Updated balance for customer %s after transfer is %d\n", peer_name, local_state.balance);
+            printf("---Local State after transfer----\n");
+            print_state(&local_state);
             pthread_create(&thread_id1, NULL, receive_and_respond_to_peers, (void*)&sockfd_peer);
         }
         else if(strcmp(operation, LOST_TRANSFER) == 0)
@@ -628,6 +641,8 @@ int main(int argc, char *argv[])
             string customer_name = args[2];
             printf("Current balance for customer %s is %d\n", peer_name, local_state.balance);
             handle_lost_transfer(amount, customer_name);
+            printf("---Local State after Lost transfer----\n");
+            print_state(&local_state);
             printf("Updated balance for customer after lost-transfer %s is %d\n", peer_name, local_state.balance);
         }
         else if(strcmp(operation, CHECKPOINT) == 0)
