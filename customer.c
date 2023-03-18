@@ -105,7 +105,7 @@ void *receive_and_respond_to_peers(void *arg)
                 if(local_state.props[i].customer_name && (strcmp(transfer_customer, local_state.props[i].customer_name) == 0))
                 {
                     if(!(local_state.props[i].first_sent == 0 && local_state.props[i].last_received == 0) 
-                        && (fs_label - local_state.props[i].last_received != 1)) //identify disparity
+                        && ((fs_label - local_state.props[i].last_received) > 1)) //identify disparity
                     {
                         local_state.ok_checkpoint = false;
                         for(int i = 0; i < cohort_size; i++)
