@@ -78,7 +78,6 @@ void *receive_and_respond_to_peers(void *arg)
         }
         if(!is_cohort_formed)
         {
-            // printf("ZHello World\n");
             deserialize_new_cohort_response(&new_cohort_response, peer_buffer_string);
             cohort_size = get_cohort_size(&new_cohort_response);
             print_new_cohort_response(&new_cohort_response, cohort_size);
@@ -143,7 +142,6 @@ void *receive_and_respond_to_peers(void *arg)
                                 string response = args[1];
                                 if(strcmp(response, YES))
                                 {
-                                    // printf("HelloWorllllddddd3333333\n");
                                     local_state.will_rollback = false;
                                     break;
                                 }
@@ -320,7 +318,7 @@ void handle_transfer(int amount, string customer_name, int sockfd_peer)
         int index = -1; 
         for(int i = 0; i < cohort_size; i++)
         {
-            if(strcmp(local_state.props[i].customer_name, peer_customer->name) == 0)
+            if(strcmp(local_state.props[i].customer_name, peer_name) == 0)
             {
                 local_state.props[i].first_sent++;
                 local_state.props[i].last_sent++;
@@ -354,7 +352,7 @@ void handle_lost_transfer(int amount, string customer_name)
         printf("Updated balance for customer after lost-transfer %s is %d\n", peer_name, local_state.balance);
         for(int i = 0; i < cohort_size; i++)
         {
-            if(strcmp(local_state.props[i].customer_name, peer_customer->name) == 0)
+            if(strcmp(local_state.props[i].customer_name, peer_name) == 0)
             {
                 local_state.props[i].first_sent++;
                 local_state.props[i].last_sent++;
