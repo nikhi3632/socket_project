@@ -194,8 +194,11 @@ void print_state(state_t* state)
         state->balance, state->ok_checkpoint, state->will_rollback, state->resume_execution);
     for(int i = 0; i < MAX_COHORT_SIZE; i++)
     {
-        printf("Props %d| Customer_name: %s | first_sent: %d | last_received : %d | last_sent: %d\n" , i, 
-            state->props[i].customer_name, state->props[i].first_sent, state->props[i].last_received, state->props[i].last_sent);
+        if(state->props[i].customer_name)
+        {
+            printf("Props %d| Customer_name: %s | first_sent: %d | last_received : %d | last_sent: %d\n" , i+1, 
+                state->props[i].customer_name, state->props[i].first_sent, state->props[i].last_received, state->props[i].last_sent);
+        }
     }
 }
 
