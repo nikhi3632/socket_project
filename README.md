@@ -1,1 +1,1 @@
-# socket_project
+# CSE 434 socket project

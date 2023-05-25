@@ -1,0 +1,177 @@
+nanam1@general5:~$ cd socket_project/
+nanam1@general5:~/socket_project$ clear
+nanam1@general5:~/socket_project$ ls
+bank    bank.o    customer.c  defs.h
+bank.c  customer  customer.o  Makefile
+nanam1@general5:~/socket_project$ clear
+nanam1@general5:~/socket_project$ ifconfig
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 9001
+        inet 10.120.70.113  netmask 255.255.255.224  broadcast 10.120.70.127
+        inet6 fe80::40a:82ff:fe49:61a1  prefixlen 64  scopeid 0x20<link>
+        ether 06:0a:82:49:61:a1  txqueuelen 1000  (Ethernet)
+        RX packets 13684014  bytes 5728829138 (5.3 GiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 15811140  bytes 5280299526 (4.9 GiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 8303597  bytes 1379772705 (1.2 GiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 8303597  bytes 1379772705 (1.2 GiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+nanam1@general5:~/socket_project$ ./customer 10.120.70.105 9000 9003 9004
+customer: Arguments passed: bank IP 10.120.70.105, port 9000
+portb, portp for this customer is 9003 9004
+customer: Echoing strings for 1000 iterations
+
+Enter string to echo:
+open Julio 100 10.120.70.113 9003 9004
+
+customer: reads string ``open Julio 100 10.120.70.113 9003 9004''
+
+Enter string to echo:
+new-cohort Julio 3
+
+customer: reads string ``new-cohort Julio 3''
+New cohort Customer 1
+Julio(Balance: 100, IP Address: 10.120.70.113, Port_b: 9003, Port_p: 9004 Cohort_id: 1)
+ New cohort Customer 2
+Brenda(Balance: 300, IP Address: 10.120.70.113, Port_b: 9005, Port_p: 9006 Cohort_id: 1)
+ New cohort Customer 3
+Andy(Balance: 200, IP Address: 10.120.70.146, Port_b: 9001, Port_p: 9002 Cohort_id: 1)
+
+Enter string to echo:
+Updated balance of customer Julio is 110
+Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+checkpoint
+
+customer: reads string ``checkpoint''
+Message: take-tent-ckpt Julio 1
+Message: take-tent-ckpt Julio 1
+---Local State----
+Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+---Secured State----
+Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+Checkpoint handle complete
+
+Enter string to echo:
+Updated balance of customer Julio is 120
+Balance: 120| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 2 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+Send Rollback ACK: Julio YES
+---Local State Before roll back---Balance: 120| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 2 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+---Local State after roll back---Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+Roll-back complete
+exit Julio
+
+customer: reads string ``exit Julio''
+
+Enter string to echo:
+^C
+nanam1@general5:~/socket_project$ ^C
+nanam1@general5:~/socket_project$ clear
+nanam1@general5:~/socket_project$ ls
+bank    bank.o    customer.c  defs.h
+bank.c  customer  customer.o  Makefile
+nanam1@general5:~/socket_project$ ifconfig
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 9001
+        inet 10.120.70.113  netmask 255.255.255.224  broadcast 10.120.70.127
+        inet6 fe80::40a:82ff:fe49:61a1  prefixlen 64  scopeid 0x20<link>
+        ether 06:0a:82:49:61:a1  txqueuelen 1000  (Ethernet)
+        RX packets 13694924  bytes 5731736374 (5.3 GiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 15824294  bytes 5283629138 (4.9 GiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 8308411  bytes 1380568742 (1.2 GiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 8308411  bytes 1380568742 (1.2 GiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+nanam1@general5:~/socket_project$ ./customer 10.120.70.105 9000 9003 9004
+customer: Arguments passed: bank IP 10.120.70.105, port 9000
+portb, portp for this customer is 9003 9004
+customer: Echoing strings for 1000 iterations
+
+Enter string to echo:
+open Julio 100 10.120.70.113 9003 9004
+
+customer: reads string ``open Julio 100 10.120.70.113 9003 9004''
+
+Enter string to echo:
+new-cohort Julio 3
+
+customer: reads string ``new-cohort Julio 3''
+New cohort Customer 1
+Julio(Balance: 100, IP Address: 10.120.70.113, Port_b: 9003, Port_p: 9004 Cohort_id: 1)
+ New cohort Customer 2
+Brenda(Balance: 300, IP Address: 10.120.70.113, Port_b: 9005, Port_p: 9006 Cohort_id: 1)
+ New cohort Customer 3
+Andy(Balance: 200, IP Address: 10.120.70.146, Port_b: 9001, Port_p: 9002 Cohort_id: 1)
+
+Enter string to echo:
+Updated balance of customer Julio is 110
+Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+checkpoint
+
+customer: reads string ``checkpoint''
+Message: take-tent-ckpt Julio 1
+Message: take-tent-ckpt Julio 1
+---Local State----
+Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+---Secured State----
+Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+Checkpoint handle complete
+
+Enter string to echo:
+Send Rollback ACK: Julio YES
+---Local State Before roll back---Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+---Local State after roll back---Balance: 110| ok_checkpoint: 1 | will_rollback :1 | resume_execution :1
+Props 1| Customer_name: Julio | first_sent: 0 | last_received : 1 | last_sent: 0
+Props 2| Customer_name: Brenda | first_sent: 0 | last_received : 0 | last_sent: 0
+Props 3| Customer_name: Andy | first_sent: 0 | last_received : 0 | last_sent: 0
+Roll-back complete
+exit Julio
+
+customer: reads string ``exit Julio''
+
+Enter string to echo:
+^C
+nanam1@general5:~/socket_project$

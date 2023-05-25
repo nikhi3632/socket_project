@@ -1,0 +1,26 @@
+Example Steps after make compilation
+
+1. Terminal1 - ssh machine1
+2. Terminal2 - ssh machine2
+3. Terminal3 - ssh machine3
+4. Terminal4 - ssh machine3
+5. In all terminals t1, t2, t3, t4 - ifconfig and find out IP’s in our case
+6. In t1 - ./bank 9000
+7. In t2 - ./customer 10.120.70.105 9000 9001 9002
+8. In t3 - ./customer 10.120.70.105 9000 9003 9004
+9. In t4 - ./customer 10.120.70.105 9000 9005 9006
+10. In t2 - open Andy 200 10.120.70.146 9001 9002
+11. In t3 - open Julio 100 10.120.70.113 9003 9004
+12. In t4 - open Brenda 300 10.120.70.113 9005 9006
+13. In t2 - deposit 20
+14. In t4 - withdraw 10
+15. In t3 - new-cohort Julio 3
+16. In t2 - transfer 10 Julio
+17. In t3 - checkpoint
+18. In t4 - lost-transfer 20 Julio
+19. In t2 - transfer 10 Brenda
+20. In t2 - delete-cohort Andy
+21. In t2 - exit Andy
+22. In t3 - exit Julio
+23. In t4 - exit Brenda
+24. Terminate all the processes.

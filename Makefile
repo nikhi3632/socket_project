@@ -1,5 +1,6 @@
 CC = gcc
 CFLAGS = -std=c99
+LFLAGS = -lpthread
 
 bank_objects = bank.o
 customer_objects = customer.o
@@ -9,10 +10,10 @@ customer_objects = customer.o
 all: bank customer
 
 bank: $(bank_objects)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
 
 customer: $(customer_objects)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LFLAGS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
