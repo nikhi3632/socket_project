@@ -4,9 +4,6 @@ nanam1@general4:~/socket_project$ ls
 bank    bank.o    customer.c  defs.h
 bank.c  customer  customer.o  Makefile
 nanam1@general4:~/socket_project$ clear
-nanam1@general4:~/socket_project$ ./customer 10.120^C
-nanam1@general4:~/socket_project$ ^C
-nanam1@general4:~/socket_project$ clear
 nanam1@general4:~/socket_project$ ifconfig
 eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 9001
         inet 10.120.70.146  netmask 255.255.255.224  broadcast 10.120.70.159
